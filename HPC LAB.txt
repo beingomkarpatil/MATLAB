@@ -1,0 +1,791 @@
+1.:- HELLO WORLD
+#include <stdio.h>
+
+// CUDA kernel to print "Hello, World!" from GPU
+__global__ void helloCUDA() {
+    printf("Hello, World from GPU!\n");
+}
+
+int main() {
+    // Launch the helloCUDA kernel on the GPU
+    helloCUDA<<<1, 1>>>();
+
+    // Wait for GPU to finish before exiting
+    cudaDeviceSynchronize();
+
+    // Print a message from CPU
+    printf("Hello, World from CPU!\n");
+
+    return 0;
+}
+
+
+2.:- MATRIX MULTIPLICATION
+#include <stdio.h>
+
+#define N 4
+
+// CUDA kernel to multiply two matrices
+__global__ void matrixMul(int *a, int *b, int *c) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < N && col < N) {
+        int sum = 0;
+        for (int i = 0; i < N; ++i) {
+            sum += a[row * N + i] * b[i * N + col];
+        }
+        c[row * N + col] = sum;
+    }
+}
+
+int main() {
+    int a[N][N], b[N][N], c[N][N];
+    int *dev_a, *dev_b, *dev_c;
+
+    // Initialize matrices a and b
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            a[i][j] = i + j;
+            b[i][j] = i - j;
+        }
+    }
+
+    // Allocate memory on GPU
+    cudaMalloc((void**)&dev_a, N * N * sizeof(int));
+    cudaMalloc((void**)&dev_b, N * N * sizeof(int));
+    cudaMalloc((void**)&dev_c, N * N * sizeof(int));
+
+    // Copy matrices from host to device
+    cudaMemcpy(dev_a, a, N * N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(dev_b, b, N * N * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Define block and grid sizes
+    dim3 threadsPerBlock(2, 2);
+    dim3 numBlocks(N / threadsPerBlock.x, N / threadsPerBlock.y);
+
+    // Launch matrix multiplication kernel
+    matrixMul<<<numBlocks, threadsPerBlock>>>(dev_a, dev_b, dev_c);
+
+    // Copy result back to host
+    cudaMemcpy(c, dev_c, N * N * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print result matrix c
+    printf("Matrix C:\n");
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            printf("%d ", c[i][j]);
+        }
+        printf("\n");
+    }
+
+    // Free device memory
+    cudaFree(dev_a);
+    cudaFree(dev_b);
+    cudaFree(dev_c);
+
+    return 0;
+}
+
+
+3.:- MATRIX ADDITION
+#include <stdio.h>
+
+#define N 4
+
+// CUDA kernel to add two matrices
+__global__ void matrixAdd(int *a, int *b, int *c) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < N && col < N) {
+        c[row * N + col] = a[row * N + col] + b[row * N + col];
+    }
+}
+
+int main() {
+    int a[N][N], b[N][N], c[N][N];
+    int *dev_a, *dev_b, *dev_c;
+
+    // Initialize matrices a and b
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            a[i][j] = i + j;
+            b[i][j] = i - j;
+        }
+    }
+
+    // Allocate memory on GPU
+    cudaMalloc((void**)&dev_a, N * N * sizeof(int));
+    cudaMalloc((void**)&dev_b, N * N * sizeof(int));
+    cudaMalloc((void**)&dev_c, N * N * sizeof(int));
+
+    // Copy matrices from host to device
+    cudaMemcpy(dev_a, a, N * N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(dev_b, b, N * N * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Define block and grid sizes
+    dim3 threadsPerBlock(2, 2);
+    dim3 numBlocks(N / threadsPerBlock.x, N / threadsPerBlock.y);
+
+    // Launch matrix addition kernel
+    matrixAdd<<<numBlocks, threadsPerBlock>>>(dev_a, dev_b, dev_c);
+
+    // Copy result back to host
+    cudaMemcpy(c, dev_c, N * N * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print result matrix c
+    printf("Matrix C:\n");
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            printf("%d ", c[i][j]);
+        }
+        printf("\n");
+    }
+
+    // Free device memory
+    cudaFree(dev_a);
+    cudaFree(dev_b);
+    cudaFree(dev_c);
+
+    return 0;
+}
+
+
+4.:- Matrix transpose
+#include <stdio.h>
+
+#define N 4
+
+// CUDA kernel to transpose a matrix
+__global__ void matrixTranspose(int *a, int *b) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < N && col < N) {
+        b[col * N + row] = a[row * N + col];
+    }
+}
+
+int main() {
+    int a[N][N], b[N][N];
+    int *dev_a, *dev_b;
+
+    // Initialize matrix a
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            a[i][j] = i + j;
+        }
+    }
+
+    // Allocate memory on GPU
+    cudaMalloc((void**)&dev_a, N * N * sizeof(int));
+    cudaMalloc((void**)&dev_b, N * N * sizeof(int));
+
+    // Copy matrix a from host to device
+    cudaMemcpy(dev_a, a, N * N * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Define block and grid sizes
+    dim3 threadsPerBlock(2, 2);
+    dim3 numBlocks(N / threadsPerBlock.x, N / threadsPerBlock.y);
+
+    // Launch matrix transpose kernel
+    matrixTranspose<<<numBlocks, threadsPerBlock>>>(dev_a, dev_b);
+
+    // Copy result back to host
+    cudaMemcpy(b, dev_b, N * N * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print result matrix b
+    printf("Transposed Matrix B:\n");
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            printf("%d ", b[i][j]);
+        }
+        printf("\n");
+    }
+
+    // Free device memory
+    cudaFree(dev_a);
+    cudaFree(dev_b);
+
+    return 0;
+}
+
+
+5.:- Vector addition
+#include <stdio.h>
+
+#define N 10
+
+// CUDA kernel to add two vectors
+__global__ void vectorAdd(int *a, int *b, int *c) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) {
+        c[idx] = a[idx] + b[idx];
+    }
+}
+
+int main() {
+    int a[N], b[N], c[N];
+    int *dev_a, *dev_b, *dev_c;
+
+    // Initialize vectors a and b
+    for (int i = 0; i < N; ++i) {
+        a[i] = i;
+        b[i] = i * i;
+    }
+
+    // Allocate memory on GPU
+    cudaMalloc((void**)&dev_a, N * sizeof(int));
+    cudaMalloc((void**)&dev_b, N * sizeof(int));
+    cudaMalloc((void**)&dev_c, N * sizeof(int));
+
+    // Copy vectors from host to device
+    cudaMemcpy(dev_a, a, N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(dev_b, b, N * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Define block and grid sizes
+    dim3 threadsPerBlock(256);
+    dim3 numBlocks((N + threadsPerBlock.x - 1) / threadsPerBlock.x);
+
+    // Launch vector addition kernel
+    vectorAdd<<<numBlocks, threadsPerBlock>>>(dev_a, dev_b, dev_c);
+
+    // Copy result back to host
+    cudaMemcpy(c, dev_c, N * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print result vector c
+    printf("Vector C:\n");
+    for (int i = 0; i < N; ++i) {
+        printf("%d ", c[i]);
+    }
+    printf("\n");
+
+    // Free device memory
+    cudaFree(dev_a);
+    cudaFree(dev_b);
+    cudaFree(dev_c);
+
+    return 0;
+}
+
+
+6.:- Open MP
+#include <stdio.h>
+#include <omp.h>
+
+#define N 10
+
+__global__ void vectorAdd(int *a, int *b, int *c) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) {
+        c[idx] = a[idx] + b[idx];
+    }
+}
+
+int main() {
+    int a[N], b[N], c[N];
+    int *dev_a, *dev_b, *dev_c;
+
+    // Initialize vectors a and b
+    for (int i = 0; i < N; ++i) {
+        a[i] = i;
+        b[i] = i * i;
+    }
+
+    // Allocate memory on GPU
+    cudaMalloc((void**)&dev_a, N * sizeof(int));
+    cudaMalloc((void**)&dev_b, N * sizeof(int));
+    cudaMalloc((void**)&dev_c, N * sizeof(int));
+
+    // Copy vectors from host to device
+    cudaMemcpy(dev_a, a, N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(dev_b, b, N * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Parallelize vector addition using OpenMP
+    #pragma omp parallel
+    {
+        // Define block and grid sizes
+        dim3 threadsPerBlock(256);
+        dim3 numBlocks((N + threadsPerBlock.x - 1) / threadsPerBlock.x);
+
+        // Launch vector addition kernel
+        vectorAdd<<<numBlocks, threadsPerBlock>>>(dev_a, dev_b, dev_c);
+    }
+
+    // Copy result back to host
+    cudaMemcpy(c, dev_c, N * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print result vector c
+    printf("Vector C:\n");
+    for (int i = 0; i < N; ++i) {
+        printf("%d ", c[i]);
+    }
+    printf("\n");
+
+    // Free device memory
+    cudaFree(dev_a);
+    cudaFree(dev_b);
+    cudaFree(dev_c);
+
+    return 0;
+}
+
+
+7.:-MPI
+#include <stdio.h>
+#include <mpi.h>
+
+#define N 10
+
+__global__ void vectorAdd(int *a, int *b, int *c, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        c[idx] = a[idx] + b[idx];
+    }
+}
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int *a, *b, *c;
+    int *dev_a, *dev_b, *dev_c;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Allocate memory on GPU
+    cudaMalloc((void**)&dev_a, N * sizeof(int));
+    cudaMalloc((void**)&dev_b, N * sizeof(int));
+    cudaMalloc((void**)&dev_c, N * sizeof(int));
+
+    // Each rank performs vector addition using CUDA
+    int chunkSize = N / size;
+    cudaMallocHost((void**)&a, N * sizeof(int));
+    cudaMallocHost((void**)&b, N * sizeof(int));
+    cudaMallocHost((void**)&c, N * sizeof(int));
+
+    // Initialize vectors a and b
+    for (int i = 0; i < N; ++i) {
+        a[i] = i;
+        b[i] = i * i;
+    }
+
+    // Scatter data to all processes
+    MPI_Scatter(a, chunkSize, MPI_INT, a, chunkSize, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(b, chunkSize, MPI_INT, b, chunkSize, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Perform vector addition on GPU
+    vectorAdd<<<1, N>>>(dev_a, dev_b, dev_c, chunkSize);
+
+    // Gather results back to root
+    MPI_Gather(c, chunkSize, MPI_INT, c, chunkSize, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Print result in rank 0
+    if (rank == 0) {
+        printf("Vector C:\n");
+        for (int i = 0; i < N; ++i) {
+            printf("%d ", c[i]);
+        }
+        printf("\n");
+    }
+
+    // Clean up
+    cudaFree(dev_a);
+    cudaFree(dev_b);
+    cudaFree(dev_c);
+    cudaFreeHost(a);
+    cudaFreeHost(b);
+    cudaFreeHost(c);
+
+    MPI_Finalize();
+
+    return 0;
+}
+
+
+8.:- Sum of all numbers and find maximum number in that 
+#include <stdio.h>
+
+#define N 10
+
+// CUDA kernel to compute sum and find maximum
+__global__ void sumAndMax(int *arr, int *sum, int *max) {
+    int tid = threadIdx.x;
+    int stride = blockDim.x;
+    int localSum = 0;
+    int localMax = arr[tid];
+
+    // Compute local sum and local maximum
+    for (int i = tid; i < N; i += stride) {
+        localSum += arr[i];
+        if (arr[i] > localMax) {
+            localMax = arr[i];
+        }
+    }
+
+    // Store local sum and local maximum to shared memory
+    __shared__ int blockSum[256];
+    __shared__ int blockMax[256];
+
+    blockSum[tid] = localSum;
+    blockMax[tid] = localMax;
+
+    __syncthreads();
+
+    // Reduction to compute global sum and global maximum
+    for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+        if (tid < stride) {
+            blockSum[tid] += blockSum[tid + stride];
+            if (blockMax[tid + stride] > blockMax[tid]) {
+                blockMax[tid] = blockMax[tid + stride];
+            }
+        }
+        __syncthreads();
+    }
+
+    // Store final results
+    if (tid == 0) {
+        *sum = blockSum[0];
+        *max = blockMax[0];
+    }
+}
+
+int main() {
+    int arr[N] = {10, 2, 5, 7, 3, 12, 8, 9, 15, 1};
+    int sum, max;
+    int *dev_arr, *dev_sum, *dev_max;
+
+    // Allocate memory on GPU
+    cudaMalloc((void**)&dev_arr, N * sizeof(int));
+    cudaMalloc((void**)&dev_sum, sizeof(int));
+    cudaMalloc((void**)&dev_max, sizeof(int));
+
+    // Copy array from host to device
+    cudaMemcpy(dev_arr, arr, N * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Launch kernel
+    sumAndMax<<<1, 256>>>(dev_arr, dev_sum, dev_max);
+
+    // Copy result back to host
+    cudaMemcpy(&sum, dev_sum, sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&max, dev_max, sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print result
+    printf("Sum of all numbers: %d\n", sum);
+    printf("Maximum number: %d\n", max);
+
+    // Free device memory
+    cudaFree(dev_arr);
+    cudaFree(dev_sum);
+    cudaFree(dev_max);
+
+    return 0;
+}
+
+
+
+9.;- Addition of two arrays by element wise
+#include <stdio.h>
+
+#define N 10
+
+// CUDA kernel to perform element-wise addition of two arrays
+__global__ void arrayAdd(int *a, int *b, int *c) {
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    if (tid < N) {
+        c[tid] = a[tid] + b[tid];
+    }
+}
+
+int main() {
+    int a[N] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    int b[N] = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+    int c[N]; // Result array
+    int *dev_a, *dev_b, *dev_c;
+
+    // Allocate memory on GPU
+    cudaMalloc((void**)&dev_a, N * sizeof(int));
+    cudaMalloc((void**)&dev_b, N * sizeof(int));
+    cudaMalloc((void**)&dev_c, N * sizeof(int));
+
+    // Copy arrays from host to device
+    cudaMemcpy(dev_a, a, N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(dev_b, b, N * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Define block and grid sizes
+    dim3 threadsPerBlock(256);
+    dim3 numBlocks((N + threadsPerBlock.x - 1) / threadsPerBlock.x);
+
+    // Launch kernel
+    arrayAdd<<<numBlocks, threadsPerBlock>>>(dev_a, dev_b, dev_c);
+
+    // Copy result back to host
+    cudaMemcpy(c, dev_c, N * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print result array
+    printf("Result array:\n");
+    for (int i = 0; i < N; ++i) {
+        printf("%d ", c[i]);
+    }
+    printf("\n");
+
+    // Free device memory
+    cudaFree(dev_a);
+    cudaFree(dev_b);
+    cudaFree(dev_c);
+
+    return 0;
+}
+
+
+10.;- Quick sort
+#include <stdio.h>
+
+#define N 10
+
+// CUDA kernel to partition array into two halves
+__global__ void partition(int *arr, int left, int right, int *pivot_index) {
+    int pivot = arr[right];
+    int i = left - 1;
+
+    for (int j = left; j < right; ++j) {
+        if (arr[j] <= pivot) {
+            i++;
+            int temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+    }
+
+    int temp = arr[i + 1];
+    arr[i + 1] = arr[right];
+    arr[right] = temp;
+
+    *pivot_index = i + 1;
+}
+
+// Host function to call CUDA kernel for partitioning
+void quicksort(int *arr, int left, int right) {
+    if (left < right) {
+        int pivot_index;
+        int *dev_arr, *dev_pivot_index;
+
+        cudaMalloc((void**)&dev_arr, N * sizeof(int));
+        cudaMalloc((void**)&dev_pivot_index, sizeof(int));
+
+        cudaMemcpy(dev_arr, arr, N * sizeof(int), cudaMemcpyHostToDevice);
+
+        partition<<<1, 1>>>(dev_arr, left, right, dev_pivot_index);
+
+        cudaMemcpy(&pivot_index, dev_pivot_index, sizeof(int), cudaMemcpyDeviceToHost);
+
+        cudaFree(dev_arr);
+        cudaFree(dev_pivot_index);
+
+        quicksort(arr, left, pivot_index - 1);
+        quicksort(arr, pivot_index + 1, right);
+    }
+}
+
+int main() {
+    int arr[N] = {10, 7, 8, 9, 1, 5, 15, 3, 6, 2};
+
+    printf("Original array:\n");
+    for (int i = 0; i < N; ++i) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+
+    quicksort(arr, 0, N - 1);
+
+    printf("Sorted array:\n");
+    for (int i = 0; i < N; ++i) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+
+
+
+11.:- Merge sort
+#include <stdio.h>
+
+#define N 10
+
+// CUDA kernel to merge two sorted arrays
+__global__ void merge(int *arr, int left, int middle, int right) {
+    int i = left;
+    int j = middle + 1;
+    int k = threadIdx.x + blockIdx.x * blockDim.x;
+
+    __shared__ int merged[N];
+
+    while (i <= middle && j <= right) {
+        if (arr[i] <= arr[j]) {
+            merged[k] = arr[i];
+            i++;
+        } else {
+            merged[k] = arr[j];
+            j++;
+        }
+        k += blockDim.x * gridDim.x;
+    }
+
+    while (i <= middle) {
+        merged[k] = arr[i];
+        i += blockDim.x * gridDim.x;
+        k += blockDim.x * gridDim.x;
+    }
+
+    while (j <= right) {
+        merged[k] = arr[j];
+        j += blockDim.x * gridDim.x;
+        k += blockDim.x * gridDim.x;
+    }
+
+    k = threadIdx.x + blockIdx.x * blockDim.x;
+    arr[k] = merged[k];
+}
+
+// Host function to call CUDA kernel for merging
+void mergeSort(int *arr, int left, int right) {
+    if (left < right) {
+        int middle = left + (right - left) / 2;
+
+        mergeSort(arr, left, middle);
+        mergeSort(arr, middle + 1, right);
+
+        merge<<<1, N>>>(arr, left, middle, right);
+        cudaDeviceSynchronize();
+    }
+}
+
+int main() {
+    int arr[N] = {10, 7, 8, 9, 1, 5, 15, 3, 6, 2};
+
+    printf("Original array:\n");
+    for (int i = 0; i < N; ++i) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+
+    mergeSort(arr, 0, N - 1);
+
+    printf("Sorted array:\n");
+    for (int i = 0; i < N; ++i) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+
+
+
+
+12.;- Radix sort
+#include <stdio.h>
+#include <stdlib.h>
+
+#define N 10
+#define NUM_BITS 4
+#define NUM_BINS (1 << NUM_BITS)
+#define NUM_BLOCKS 1
+#define NUM_THREADS_PER_BLOCK 1024
+
+// CUDA kernel to perform radix sort on the device
+__global__ void radixSort(int *inputArray, int *outputArray, int *binHistogram, int *binScan, int bit) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int numElements = blockDim.x * gridDim.x;
+    int mask = (1 << bit) - 1;
+
+    // Initialize bin histogram and scan arrays to zeros
+    if (threadIdx.x < NUM_BINS) {
+        binHistogram[threadIdx.x] = 0;
+        binScan[threadIdx.x] = 0;
+    }
+
+    __syncthreads();
+
+    // Compute local histogram in shared memory
+    for (int i = tid; i < N; i += numElements) {
+        int bin = (inputArray[i] >> bit) & mask;
+        atomicAdd(&binHistogram[bin], 1);
+    }
+
+    __syncthreads();
+
+    // Exclusive scan on bin histogram
+    if (threadIdx.x < NUM_BINS - 1) {
+        for (int i = threadIdx.x + 1; i < NUM_BINS; ++i) {
+            binScan[i] = binHistogram[i - 1];
+        }
+    }
+
+    __syncthreads();
+
+    // Compute global scan
+    for (int i = tid; i < NUM_BINS; i += numElements) {
+        if (i > 0) {
+            binScan[i] += binScan[i - 1];
+        }
+    }
+
+    __syncthreads();
+
+    // Scatter elements to output array
+    for (int i = tid; i < N; i += numElements) {
+        int bin = (inputArray[i] >> bit) & mask;
+        int dest = binScan[bin]++;
+        outputArray[dest] = inputArray[i];
+    }
+}
+
+// Host function to perform radix sort
+void radixSortHost(int *inputArray, int *outputArray) {
+    int *dev_inputArray, *dev_outputArray, *dev_binHistogram, *dev_binScan;
+
+    cudaMalloc((void**)&dev_inputArray, N * sizeof(int));
+    cudaMalloc((void**)&dev_outputArray, N * sizeof(int));
+    cudaMalloc((void**)&dev_binHistogram, NUM_BINS * sizeof(int));
+    cudaMalloc((void**)&dev_binScan, NUM_BINS * sizeof(int));
+
+    cudaMemcpy(dev_inputArray, inputArray, N * sizeof(int), cudaMemcpyHostToDevice);
+
+    for (int bit = 0; bit < sizeof(int) * 8; bit += NUM_BITS) {
+        radixSort<<<NUM_BLOCKS, NUM_THREADS_PER_BLOCK>>>(dev_inputArray, dev_outputArray, dev_binHistogram, dev_binScan, bit);
+        cudaDeviceSynchronize();
+        cudaMemcpy(dev_inputArray, dev_outputArray, N * sizeof(int), cudaMemcpyDeviceToDevice);
+    }
+
+    cudaMemcpy(outputArray, dev_outputArray, N * sizeof(int), cudaMemcpyDeviceToHost);
+
+    cudaFree(dev_inputArray);
+    cudaFree(dev_outputArray);
+    cudaFree(dev_binHistogram);
+    cudaFree(dev_binScan);
+}
+
+int main() {
+    int inputArray[N] = {170, 45, 75, 90, 802, 24, 2, 66, 78, 802};
+    int outputArray[N];
+
+    printf("Original array:\n");
+    for (int i = 0; i < N; ++i) {
+        printf("%d ", inputArray[i]);
+    }
+    printf("\n");
+
+    radixSortHost(inputArray, outputArray);
+
+    printf("Sorted array:\n");
+    for (int i = 0; i < N; ++i) {
+        printf("%d ", outputArray[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
